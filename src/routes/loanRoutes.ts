@@ -5,7 +5,7 @@ import { createLoanHandler, listLoanHistoryHandler } from "../controllers/loanCo
 
 const router = Router();
 
-router.post("/", generalWriteRateLimiter, authenticate, createLoanHandler);
+router.post("/", authenticate, generalWriteRateLimiter, createLoanHandler);
 router.get("/history/:userId", authenticate, listLoanHistoryHandler);
 
 export default router;

@@ -5,6 +5,6 @@ import { createReservationHandler } from "../controllers/reservationController";
 
 const router = Router();
 
-router.post("/", generalWriteRateLimiter, authenticate, createReservationHandler);
+router.post("/", authenticate, generalWriteRateLimiter, createReservationHandler);
 
 export default router;

@@ -7,6 +7,6 @@ const router = Router();
 
 router.post("/", userCreationRateLimiter, authenticateOptional, createUserHandler);
 router.get("/:id/fines", authenticate, getUserFinesHandler);
-router.post("/fines/pay", generalWriteRateLimiter, authenticate, authorize("ADMIN"), payFineHandler);
+router.post("/fines/pay", authenticate, authorize("ADMIN"), generalWriteRateLimiter, payFineHandler);
 
 export default router;

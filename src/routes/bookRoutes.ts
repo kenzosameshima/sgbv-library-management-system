@@ -6,8 +6,8 @@ import { createBookHandler, deleteBookHandler, listBooksHandler, updateBookHandl
 const router = Router();
 
 router.get("/", listBooksHandler);
-router.post("/", generalWriteRateLimiter, authenticate, authorize("ADMIN"), createBookHandler);
-router.put("/:id", sensitiveOperationRateLimiter, authenticate, authorize("ADMIN"), updateBookHandler);
-router.delete("/:id", sensitiveOperationRateLimiter, authenticate, authorize("ADMIN"), deleteBookHandler);
+router.post("/", authenticate, authorize("ADMIN"), generalWriteRateLimiter, createBookHandler);
+router.put("/:id", authenticate, authorize("ADMIN"), sensitiveOperationRateLimiter, updateBookHandler);
+router.delete("/:id", authenticate, authorize("ADMIN"), sensitiveOperationRateLimiter, deleteBookHandler);
 
 export default router;

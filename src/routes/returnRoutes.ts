@@ -5,6 +5,6 @@ import { returnLoanHandler } from "../controllers/loanController";
 
 const router = Router();
 
-router.post("/", generalWriteRateLimiter, authenticate, returnLoanHandler);
+router.post("/", authenticate, generalWriteRateLimiter, returnLoanHandler);
 
 export default router;
