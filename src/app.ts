@@ -66,7 +66,7 @@ app.use(
       callback(new Error("Origem nao permitida pelo CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     credentials: true,
     maxAge: 86400 // 24h cache de preflight
   })
