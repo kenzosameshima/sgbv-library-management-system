@@ -8,14 +8,19 @@ interface JwtPayload {
   email: string;
 }
 
+// Only identity claims are signed: a verified token also carries iat/exp, which jwt.sign rejects alongside expiresIn.
+function identityClaims({ id, role, email }: JwtPayload): JwtPayload {
+  return { id, role, email };
+}
+
 export function signAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.jwtAccessSecret, {
+  return jwt.sign(identityClaims(payload), env.jwtAccessSecret, {
     expiresIn: env.jwtAccessExpiresIn as jwt.SignOptions["expiresIn"]
   });
 }
 
 export function signRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.jwtRefreshSecret, {
+  return jwt.sign(identityClaims(payload), env.jwtRefreshSecret, {
     expiresIn: env.jwtRefreshExpiresIn as jwt.SignOptions["expiresIn"]
   });
 }
