@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { createStringSchema } from "../utils/validation";
-import { createBook, deleteBook, listBooks, updateBook } from "../repositories/bookRepository";
+import { createBook, deleteBook, findBookById, listBooks, updateBook } from "../repositories/bookRepository";
 import { HttpError } from "../utils/httpError";
 
 const bookSchema = z.object({
@@ -42,7 +42,11 @@ export async function updateBookHandler(req: Request, res: Response, next: NextF
     const updated = await updateBook(req.params.id, payload);
 
     if (!updated) {
-      throw new HttpError(404, "Livro nao encontrado");
+      if (!(await findBookById(req.params.id))) {
+        throw new HttpError(404, "Livro nao encontrado");
+      }
+
+      throw new HttpError(409, "Total de copias menor que a quantidade de copias emprestadas");
     }
 
     res.status(200).json(updated);

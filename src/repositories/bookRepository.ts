@@ -18,6 +18,9 @@ export async function createBook(data: {
   return rows[0];
 }
 
+/**
+ * Returns null when the book does not exist or when the new total is lower than the copies currently on loan.
+ */
 export async function updateBook(id: string, data: {
   title: string;
   author: string;
@@ -32,8 +35,8 @@ export async function updateBook(id: string, data: {
          category = $4,
          isbn = $5,
          total_copies = $6,
-         available_copies = LEAST(available_copies, $6)
-     WHERE id = $1
+         available_copies = available_copies + ($6 - total_copies)
+     WHERE id = $1 AND $6 >= total_copies - available_copies
      RETURNING *`,
     [id, data.title, data.author, data.category, data.isbn, data.totalCopies]
   );
