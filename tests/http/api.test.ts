@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import bcrypt from "bcrypt";
 import request from "supertest";
@@ -14,8 +13,9 @@ vi.mock("../../src/config/db", () => ({
 
 import app from "../../src/app";
 import { signAccessToken } from "../../src/utils/jwt";
+import { loadSchema } from "../helpers/schema";
 
-const schema = readFileSync("config/schema.sql", "utf8").replace(/CREATE EXTENSION[^;]*;/, "");
+const schema = loadSchema();
 const PASSWORD = "correct-horse-battery";
 const CSRF = "csrf-token-for-tests";
 
