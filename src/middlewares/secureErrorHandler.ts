@@ -33,12 +33,12 @@ export function secureErrorHandler(err: Error, _req: Request, res: Response, _ne
   if (err instanceof ZodError) {
     const details: Record<string, string[]> = {};
 
-    err.errors.forEach((error) => {
-      const path = error.path.join(".");
+    err.issues.forEach((issue) => {
+      const path = issue.path.join(".");
       if (!details[path]) {
         details[path] = [];
       }
-      details[path].push(error.message);
+      details[path].push(issue.message);
     });
 
     const response: ErrorResponse = {
