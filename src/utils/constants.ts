@@ -14,6 +14,11 @@ export const PASSWORD_MAX_LENGTH = 255;
 export const BCRYPT_SALT_ROUNDS = 10;
 export const ACCESS_COOKIE_MAX_AGE_MS = 15 * MS_PER_MINUTE;
 
+// Default cookie names (overridable through AUTH_*_COOKIE_NAME)
+export const DEFAULT_ACCESS_COOKIE_NAME = "sgb_at";
+export const DEFAULT_REFRESH_COOKIE_NAME = "sgb_rt";
+export const DEFAULT_CSRF_COOKIE_NAME = "sgb_csrf";
+
 // HTTP hardening
 export const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 export const HSTS_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;

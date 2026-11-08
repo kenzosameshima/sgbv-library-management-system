@@ -1,13 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import { z } from "zod";
 import { findBookById } from "../repositories/bookRepository";
 import { createQueuedReservation, hasUserQueuedReservation } from "../repositories/reservationRepository";
+import { reservationSchema } from "../schemas/reservation";
 import { HttpError } from "../utils/httpError";
-
-const reservationSchema = z.object({
-  userId: z.string().uuid("User ID must be a valid UUID").optional(),
-  bookId: z.string().uuid("Book ID must be a valid UUID")
-}).strict();
 
 export async function createReservationHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {

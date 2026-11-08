@@ -1,19 +1,11 @@
 import bcrypt from "bcrypt";
 import { NextFunction, Request, Response } from "express";
-import { z } from "zod";
+import { createUserSchema, payFineSchema } from "../schemas/user";
 import { HttpError } from "../utils/httpError";
-import { createEmailSchema, createStringSchema } from "../utils/validation";
 import { countUsers, createUser, findUserByEmail } from "../repositories/userRepository";
 import { Role } from "../models/types";
 import { listFinesByUser, payFine } from "../repositories/fineRepository";
-import { BCRYPT_SALT_ROUNDS, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../utils/constants";
-
-const createUserSchema = z.object({
-  name: createStringSchema(2, 255, "Name"),
-  email: createEmailSchema(),
-  password: createStringSchema(PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, "Password"),
-  role: z.enum(["USER", "ADMIN"]).default("USER")
-}).strict();
+import { BCRYPT_SALT_ROUNDS } from "../utils/constants";
 
 export async function createUserHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -68,8 +60,7 @@ export async function getUserFinesHandler(req: Request, res: Response, next: Nex
 
 export async function payFineHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const schema = z.object({ fineId: z.string().uuid("ID must be a valid UUID") }).strict();
-    const { fineId } = schema.parse(req.body);
+    const { fineId } = payFineSchema.parse(req.body);
 
     const fine = await payFine(fineId);
     if (!fine) {

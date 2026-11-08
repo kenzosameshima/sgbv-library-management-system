@@ -1,16 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { z } from "zod";
-import { createStringSchema } from "../utils/validation";
+import { bookSchema } from "../schemas/book";
 import { createBook, deleteBook, findBookById, listBooks, updateBook } from "../repositories/bookRepository";
 import { HttpError } from "../utils/httpError";
-
-const bookSchema = z.object({
-  title: createStringSchema(1, 500, "Title"),
-  author: createStringSchema(1, 255, "Author"),
-  category: createStringSchema(1, 100, "Category"),
-  isbn: createStringSchema(10, 20, "ISBN"),
-  totalCopies: z.number().int().positive("Total copies must be positive")
-}).strict();
 
 /** A query parameter is only usable when it is a single string (not an array or nested object). */
 function queryString(value: unknown): string | undefined {

@@ -1,23 +1,8 @@
 import { NextFunction, Request, Response } from "express";
-import { z } from "zod";
+import { loanSchema, returnSchema } from "../schemas/loan";
 import { HttpError } from "../utils/httpError";
 import { createLoanForUser, returnLoanByIdForUser, returnLoanForUser } from "../services/loanService";
 import { listLoansByUser } from "../repositories/loanRepository";
-
-const uuidSchema = z.string().uuid("ID must be a valid UUID");
-
-const loanSchema = z.object({
-  userId: uuidSchema.optional(),
-  bookId: uuidSchema
-}).strict();
-
-const returnSchema = z
-  .object({
-    userId: uuidSchema.optional(),
-    bookId: uuidSchema.optional(),
-    loanId: uuidSchema.optional()
-  })
-  .strict();
 
 export async function createLoanHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
