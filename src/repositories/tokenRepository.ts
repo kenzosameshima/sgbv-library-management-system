@@ -32,13 +32,3 @@ export async function revokeRefreshToken(token: string): Promise<void> {
 export async function deleteExpiredRefreshTokens(): Promise<void> {
   await query("DELETE FROM refresh_tokens WHERE expires_at <= NOW()");
 }
-
-export async function hasRefreshToken(token: string): Promise<boolean> {
-  const tokenHash = hashToken(token);
-  const rows = await query<{ count: string }>(
-    "SELECT COUNT(*)::text AS count FROM refresh_tokens WHERE token = $1 AND expires_at > NOW()",
-    [tokenHash]
-  );
-
-  return Number(rows[0]?.count ?? 0) > 0;
-}

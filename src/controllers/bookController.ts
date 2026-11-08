@@ -5,19 +5,24 @@ import { createBook, deleteBook, findBookById, listBooks, updateBook } from "../
 import { HttpError } from "../utils/httpError";
 
 const bookSchema = z.object({
-  title: createStringSchema(1, 500, "Título"),
-  author: createStringSchema(1, 255, "Autor"),
-  category: createStringSchema(1, 100, "Categoria"),
+  title: createStringSchema(1, 500, "Title"),
+  author: createStringSchema(1, 255, "Author"),
+  category: createStringSchema(1, 100, "Category"),
   isbn: createStringSchema(10, 20, "ISBN"),
-  totalCopies: z.number().int().positive("Total de cópias deve ser positivo")
+  totalCopies: z.number().int().positive("Total copies must be positive")
 }).strict();
+
+/** A query parameter is only usable when it is a single string (not an array or nested object). */
+function queryString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
 
 export async function listBooksHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const books = await listBooks({
-      title: req.query.title as string | undefined,
-      author: req.query.author as string | undefined,
-      category: req.query.category as string | undefined
+      title: queryString(req.query.title),
+      author: queryString(req.query.author),
+      category: queryString(req.query.category)
     });
 
     res.status(200).json(books);
@@ -43,10 +48,10 @@ export async function updateBookHandler(req: Request, res: Response, next: NextF
 
     if (!updated) {
       if (!(await findBookById(req.params.id))) {
-        throw new HttpError(404, "Livro nao encontrado");
+        throw new HttpError(404, "Book not found");
       }
 
-      throw new HttpError(409, "Total de copias menor que a quantidade de copias emprestadas");
+      throw new HttpError(409, "Total copies is lower than the number of copies on loan");
     }
 
     res.status(200).json(updated);

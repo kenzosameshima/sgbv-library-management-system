@@ -4,7 +4,7 @@ import { HttpError } from "../utils/httpError";
 import { createLoanForUser, returnLoanByIdForUser, returnLoanForUser } from "../services/loanService";
 import { listLoansByUser } from "../repositories/loanRepository";
 
-const uuidSchema = z.string().uuid("ID deve ser um UUID válido");
+const uuidSchema = z.string().uuid("ID must be a valid UUID");
 
 const loanSchema = z.object({
   userId: uuidSchema.optional(),
@@ -17,10 +17,7 @@ const returnSchema = z
     bookId: uuidSchema.optional(),
     loanId: uuidSchema.optional()
   })
-  .strict()
-  .refine((data) => Boolean(data.bookId || data.loanId), {
-    message: "Informe bookId ou loanId"
-  });
+  .strict();
 
 export async function createLoanHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -28,7 +25,7 @@ export async function createLoanHandler(req: Request, res: Response, next: NextF
     const userId = req.user?.role === "ADMIN" && payload.userId ? payload.userId : req.user?.id;
 
     if (!userId) {
-      res.status(401).json({ message: "Usuario nao autenticado" });
+      res.status(401).json({ message: "User not authenticated" });
       return;
     }
 
@@ -45,14 +42,17 @@ export async function returnLoanHandler(req: Request, res: Response, next: NextF
     const userId = req.user?.role === "ADMIN" && payload.userId ? payload.userId : req.user?.id;
 
     if (!userId) {
-      res.status(401).json({ message: "Usuario nao autenticado" });
+      res.status(401).json({ message: "User not authenticated" });
       return;
     }
 
-    const result = payload.loanId
-      ? await returnLoanByIdForUser(userId, payload.loanId)
-      : await returnLoanForUser(userId, payload.bookId as string);
-    res.status(200).json(result);
+    if (payload.loanId) {
+      res.status(200).json(await returnLoanByIdForUser(userId, payload.loanId));
+    } else if (payload.bookId) {
+      res.status(200).json(await returnLoanForUser(userId, payload.bookId));
+    } else {
+      throw new HttpError(400, "Provide bookId or loanId");
+    }
   } catch (error) {
     next(error);
   }
@@ -63,7 +63,7 @@ export async function listLoanHistoryHandler(req: Request, res: Response, next: 
     const targetUserId = req.params.userId;
 
     if (!req.user || (req.user.role !== "ADMIN" && req.user.id !== targetUserId)) {
-      res.status(403).json({ message: "Sem permissao para consultar este historico" });
+      res.status(403).json({ message: "You do not have permission to view this history" });
       return;
     }
 

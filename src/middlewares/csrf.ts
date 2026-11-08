@@ -40,7 +40,7 @@ export function requireCsrf(req: Request, _res: Response, next: NextFunction): v
   const headerToken = req.header("x-csrf-token") ?? req.header("X-CSRF-Token");
 
   if (!cookieToken || !headerToken || cookieToken !== headerToken) {
-    next(new HttpError(403, "CSRF token invalido", "CSRF_INVALID"));
+    next(new HttpError(403, "Invalid CSRF token", "CSRF_INVALID"));
     return;
   }
 

@@ -5,8 +5,8 @@ import { createQueuedReservation, hasUserQueuedReservation } from "../repositori
 import { HttpError } from "../utils/httpError";
 
 const reservationSchema = z.object({
-  userId: z.string().uuid("ID de usuário deve ser um UUID válido").optional(),
-  bookId: z.string().uuid("ID de livro deve ser um UUID válido")
+  userId: z.string().uuid("User ID must be a valid UUID").optional(),
+  bookId: z.string().uuid("Book ID must be a valid UUID")
 }).strict();
 
 export async function createReservationHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -15,20 +15,20 @@ export async function createReservationHandler(req: Request, res: Response, next
     const userId = req.user?.role === "ADMIN" && payload.userId ? payload.userId : req.user?.id;
 
     if (!userId) {
-      throw new HttpError(401, "Usuario nao autenticado");
+      throw new HttpError(401, "User not authenticated");
     }
 
     const book = await findBookById(payload.bookId);
     if (!book) {
-      throw new HttpError(404, "Livro nao encontrado");
+      throw new HttpError(404, "Book not found");
     }
 
     if (book.available_copies > 0) {
-      throw new HttpError(400, "Livro disponivel. Nao e necessario reservar");
+      throw new HttpError(400, "Book is available. No reservation needed");
     }
 
     if (await hasUserQueuedReservation(userId, payload.bookId)) {
-      throw new HttpError(409, "Usuario ja possui reserva ativa para este livro");
+      throw new HttpError(409, "User already has an active reservation for this book");
     }
 
     const reservation = await createQueuedReservation({ userId, bookId: payload.bookId });

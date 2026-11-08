@@ -26,8 +26,3 @@ export async function findUserByEmail(email: string): Promise<User | null> {
   const rows = await query<User>("SELECT * FROM users WHERE email = $1", [email.toLowerCase()]);
   return rows[0] ?? null;
 }
-
-export async function findUserById(id: string): Promise<User | null> {
-  const rows = await query<User>("SELECT * FROM users WHERE id = $1", [id]);
-  return rows[0] ?? null;
-}
