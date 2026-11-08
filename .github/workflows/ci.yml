@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend (typecheck, test, build)
+    name: Backend (typecheck, lint, test, build)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,6 +23,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm test
       - run: npm run build
@@ -45,3 +46,24 @@ jobs:
       - run: npm run lint
         continue-on-error: true
       - run: npm run build
+
+  audit:
+    name: Dependency audit (production)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Backend
+        run: npm audit --omit=dev --audit-level=low
+      - name: Frontend
+        run: npm audit --omit=dev --audit-level=low
+        working-directory: frontend
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t sgb-api:ci .
