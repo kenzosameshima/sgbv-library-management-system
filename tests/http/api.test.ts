@@ -83,11 +83,20 @@ beforeEach(async () => {
 });
 
 describe("health", () => {
-  it("answers without authentication", async () => {
+  it("answers without authentication when the database is reachable", async () => {
     const res = await request(app).get("/health");
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ status: "ok" });
+  });
+
+  it("reports 503 and hides the cause when the database is down", async () => {
+    vi.spyOn(db, "query").mockRejectedValueOnce(new Error("connect ECONNREFUSED 10.0.0.5:5432"));
+
+    const res = await request(app).get("/health");
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({ status: "unavailable" });
   });
 });
 

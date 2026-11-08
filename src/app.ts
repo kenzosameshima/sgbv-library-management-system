@@ -8,6 +8,8 @@ import { validatePayloadSize } from "./middlewares/payloadValidation";
 import { requireCsrf } from "./middlewares/csrf";
 import { securityMonitoring } from "./middlewares/securityMonitoring";
 import { env } from "./config/env";
+import { query } from "./config/db";
+import { logger } from "./config/logger";
 import { CORS_PREFLIGHT_MAX_AGE_SECONDS, HSTS_MAX_AGE_SECONDS, MAX_REQUEST_BODY_BYTES } from "./utils/constants";
 
 const app = express();
@@ -82,8 +84,15 @@ app.use(cookieParser());
 app.use(requireCsrf);
 app.use(securityMonitoring);
 
-app.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok" });
+// Liveness plus a database round trip; the cause of a failure is logged, never returned.
+app.get("/health", async (_req, res) => {
+  try {
+    await query("SELECT 1");
+    res.status(200).json({ status: "ok" });
+  } catch (error) {
+    logger.error({ err: error }, "Health check failed");
+    res.status(503).json({ status: "unavailable" });
+  }
 });
 
 app.use("/api/v1", apiRoutes);
