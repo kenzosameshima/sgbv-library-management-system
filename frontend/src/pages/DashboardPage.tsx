@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthContext";
 import { apiRequest } from "../api/client";
 import type { Book, Fine, Loan } from "../types";
 import StatCard from "../components/StatCard";
+import { MAX_ACTIVE_LOANS, formatMoney } from "../constants";
 
 export default function DashboardPage() {
   const { user, token } = useAuth();
@@ -49,15 +50,15 @@ export default function DashboardPage() {
   return (
     <section>
       <header className="page-header">
-        <h2>{user?.role === "ADMIN" ? "Dashboard Admin" : "Dashboard Usuario"}</h2>
-        <p>Visao rapida das operacoes da biblioteca.</p>
+        <h2>{user?.role === "ADMIN" ? "Admin Dashboard" : "User Dashboard"}</h2>
+        <p>Quick overview of library operations.</p>
       </header>
 
       <div className="cards-grid">
-        <StatCard title="Emprestimos Ativos" value={stats.activeLoans} helper="Limite de 5 ativos por usuario" />
-        <StatCard title="Multas Pendentes" value={stats.pendingFines} helper={`R$ ${stats.pendingFinesAmount.toFixed(2)}`} />
-        <StatCard title="Livros no Acervo" value={books.length} />
-        <StatCard title="Livros Indisponiveis" value={stats.unavailableBooks} helper="Sugestao: fluxo de reserva" />
+        <StatCard title="Active Loans" value={stats.activeLoans} helper={`Limit of ${MAX_ACTIVE_LOANS} active loans per user`} />
+        <StatCard title="Pending Fines" value={stats.pendingFines} helper={formatMoney(stats.pendingFinesAmount)} />
+        <StatCard title="Books in Catalog" value={books.length} />
+        <StatCard title="Unavailable Books" value={stats.unavailableBooks} helper="Tip: use the reservation flow" />
       </div>
     </section>
   );

@@ -18,7 +18,7 @@ export default function AdminReportsPage() {
       const data = await apiRequest<Loan[]>(`/loans/history/${userId}`, { token });
       setReport(data);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao gerar relatorio");
+      toast.error(error instanceof Error ? error.message : "Could not generate report");
     }
   }
 
@@ -28,26 +28,26 @@ export default function AdminReportsPage() {
   return (
     <section>
       <header className="page-header">
-        <h2>Relatorios Simples</h2>
-        <p>Resumo de emprestimos por usuario.</p>
+        <h2>Simple Reports</h2>
+        <p>Loan summary per user.</p>
       </header>
 
       <form className="inline-form" onSubmit={loadReport}>
         <input value={userId} onChange={(event) => setUserId(event.target.value)} placeholder="User ID" required />
-        <button type="submit">Gerar</button>
+        <button type="submit">Generate</button>
       </form>
 
       <div className="cards-grid">
         <article className="stat-card">
-          <h3>Total de Registros</h3>
+          <h3>Total Records</h3>
           <p>{report.length}</p>
         </article>
         <article className="stat-card">
-          <h3>Ativos</h3>
+          <h3>Active</h3>
           <p>{active}</p>
         </article>
         <article className="stat-card">
-          <h3>Finalizados</h3>
+          <h3>Returned</h3>
           <p>{returned}</p>
         </article>
       </div>

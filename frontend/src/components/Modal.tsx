@@ -20,7 +20,7 @@ export default function Modal({
       <div className="modal" onClick={(event) => event.stopPropagation()}>
         <header>
           <h3>{title}</h3>
-          <button onClick={onClose} aria-label="Fechar">
+          <button onClick={onClose} aria-label="Close">
             x
           </button>
         </header>

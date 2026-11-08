@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Book } from "../types";
+import { LOCAL_RESERVATIONS_KEY } from "../constants";
 
 const PAGE_SIZE = 6;
 
@@ -41,10 +42,10 @@ export default function CatalogPage() {
         token,
         body: JSON.stringify({ bookId })
       });
-      toast.success("Emprestimo solicitado");
+      toast.success("Loan requested");
       fetchBooks().catch(() => undefined);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha no emprestimo";
+      const message = error instanceof Error ? error.message : "Loan failed";
       toast.error(message);
     }
   }
@@ -59,13 +60,13 @@ export default function CatalogPage() {
         body: JSON.stringify({ bookId })
       });
 
-      const localReservations = JSON.parse(localStorage.getItem("sgb_reservations") ?? "[]") as Array<Record<string, string>>;
+      const localReservations = JSON.parse(localStorage.getItem(LOCAL_RESERVATIONS_KEY) ?? "[]") as Array<Record<string, string>>;
       localReservations.push({ bookId, createdAt: new Date().toISOString() });
-      localStorage.setItem("sgb_reservations", JSON.stringify(localReservations));
+      localStorage.setItem(LOCAL_RESERVATIONS_KEY, JSON.stringify(localReservations));
 
-      toast.success("Reserva realizada e adicionada na fila");
+      toast.success("Reservation placed and added to the queue");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao reservar";
+      const message = error instanceof Error ? error.message : "Reservation failed";
       toast.error(message);
     }
   }
@@ -73,7 +74,7 @@ export default function CatalogPage() {
   function handleSearch(event: FormEvent) {
     event.preventDefault();
     fetchBooks().catch(() => {
-      toast.error("Nao foi possivel consultar o acervo");
+      toast.error("Could not load the catalog");
     });
   }
 
@@ -83,26 +84,26 @@ export default function CatalogPage() {
   return (
     <section>
       <header className="page-header">
-        <h2>Acervo</h2>
-        <p>Busque por titulo, autor ou categoria.</p>
+        <h2>Catalog</h2>
+        <p>Search by title, author or category.</p>
       </header>
 
       <form className="inline-form" onSubmit={handleSearch}>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Titulo" />
-        <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="Autor" />
-        <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Categoria" />
-        <button type="submit">Pesquisar</button>
+        <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Title" />
+        <input value={author} onChange={(event) => setAuthor(event.target.value)} placeholder="Author" />
+        <input value={category} onChange={(event) => setCategory(event.target.value)} placeholder="Category" />
+        <button type="submit">Search</button>
       </form>
 
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Titulo</th>
-              <th>Autor</th>
-              <th>Categoria</th>
-              <th>Disponiveis</th>
-              <th>Acoes</th>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Category</th>
+              <th>Available</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -114,10 +115,10 @@ export default function CatalogPage() {
                 <td>{book.available_copies}</td>
                 <td className="row-actions">
                   <button onClick={() => requestLoan(book.id)} disabled={book.available_copies <= 0}>
-                    Emprestar
+                    Borrow
                   </button>
                   <button onClick={() => requestReservation(book.id)} disabled={book.available_copies > 0}>
-                    Reservar
+                    Reserve
                   </button>
                 </td>
               </tr>
@@ -127,11 +128,11 @@ export default function CatalogPage() {
       </div>
 
       <div className="pagination">
-        <button onClick={() => setPage((current) => Math.max(1, current - 1))}>Anterior</button>
+        <button onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
         <span>
-          Pagina {page} de {totalPages}
+          Page {page} of {totalPages}
         </span>
-        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Proxima</button>
+        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Next</button>
       </div>
     </section>
   );

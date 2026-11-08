@@ -15,21 +15,21 @@ export default function AppLayout() {
       <aside className="sidebar">
         <Link to="/" className="brand">
           SGB
-          <span>MVP Biblioteca</span>
+          <span>Library MVP</span>
         </Link>
 
         <nav className="nav-group">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "") }>
             Dashboard
           </NavLink>
-          <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Acervo</NavLink>
-          <NavLink to="/loans" className={({ isActive }) => (isActive ? "active" : "")}>Emprestimos</NavLink>
-          <NavLink to="/reservations" className={({ isActive }) => (isActive ? "active" : "")}>Reservas</NavLink>
-          <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}>Historico</NavLink>
-          {user?.role === "ADMIN" && <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>Usuarios</NavLink>}
-          {user?.role === "ADMIN" && <NavLink to="/admin/books" className={({ isActive }) => (isActive ? "active" : "")}>Livros</NavLink>}
-          {user?.role === "ADMIN" && <NavLink to="/admin/fines" className={({ isActive }) => (isActive ? "active" : "")}>Multas</NavLink>}
-          {user?.role === "ADMIN" && <NavLink to="/admin/reports" className={({ isActive }) => (isActive ? "active" : "")}>Relatorios</NavLink>}
+          <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>
+          <NavLink to="/loans" className={({ isActive }) => (isActive ? "active" : "")}>Loans</NavLink>
+          <NavLink to="/reservations" className={({ isActive }) => (isActive ? "active" : "")}>Reservations</NavLink>
+          <NavLink to="/history" className={({ isActive }) => (isActive ? "active" : "")}>History</NavLink>
+          {user?.role === "ADMIN" && <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>Users</NavLink>}
+          {user?.role === "ADMIN" && <NavLink to="/admin/books" className={({ isActive }) => (isActive ? "active" : "")}>Books</NavLink>}
+          {user?.role === "ADMIN" && <NavLink to="/admin/fines" className={({ isActive }) => (isActive ? "active" : "")}>Fines</NavLink>}
+          {user?.role === "ADMIN" && <NavLink to="/admin/reports" className={({ isActive }) => (isActive ? "active" : "")}>Reports</NavLink>}
         </nav>
 
         <div className="sidebar-footer">

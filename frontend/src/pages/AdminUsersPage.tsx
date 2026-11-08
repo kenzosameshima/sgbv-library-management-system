@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { AuthUser, Role } from "../types";
+import { PASSWORD_MIN_LENGTH } from "../constants";
 
 export default function AdminUsersPage() {
   const { token } = useAuth();
@@ -18,8 +19,8 @@ export default function AdminUsersPage() {
     event.preventDefault();
     if (!token) return;
 
-    if (password.length < 8) {
-      toast.error("Senha minima: 8 caracteres");
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      toast.error(`Minimum password length: ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
 
@@ -35,22 +36,22 @@ export default function AdminUsersPage() {
       setEmail("");
       setPassword("");
       setRole("USER");
-      toast.success("Usuario criado");
+      toast.success("User created");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao criar usuario");
+      toast.error(error instanceof Error ? error.message : "Could not create user");
     }
   }
 
   return (
     <section>
       <header className="page-header">
-        <h2>Gerenciar Usuarios</h2>
-        <p>Criacao de usuarios para acesso ao sistema.</p>
+        <h2>Manage Users</h2>
+        <p>Create users who can access the system.</p>
       </header>
 
       <form className="panel-form" onSubmit={handleSubmit}>
         <label>
-          Nome
+          Name
           <input value={name} onChange={(event) => setName(event.target.value)} required />
         </label>
         <label>
@@ -58,26 +59,26 @@ export default function AdminUsersPage() {
           <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
         </label>
         <label>
-          Senha
-          <input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} required />
+          Password
+          <input type="password" minLength={PASSWORD_MIN_LENGTH} value={password} onChange={(event) => setPassword(event.target.value)} required />
         </label>
         <label>
-          Perfil
+          Role
           <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
             <option value="USER">USER</option>
             <option value="ADMIN">ADMIN</option>
           </select>
         </label>
-        <button type="submit">Cadastrar Usuario</button>
+        <button type="submit">Register User</button>
       </form>
 
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>Name</th>
               <th>Email</th>
-              <th>Perfil</th>
+              <th>Role</th>
             </tr>
           </thead>
           <tbody>

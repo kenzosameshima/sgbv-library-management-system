@@ -1,3 +1,5 @@
+import { CSRF_COOKIE_NAME } from "../constants";
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 function getCookie(name: string): string | null {
@@ -38,7 +40,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   const method = (options.method ?? "GET").toUpperCase();
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    const csrfToken = getCookie("sgb_csrf");
+    const csrfToken = getCookie(CSRF_COOKIE_NAME);
     if (csrfToken) {
       headers.set("X-CSRF-Token", csrfToken);
     }
@@ -51,7 +53,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   });
 
   if (!response.ok) {
-    let message = "Erro inesperado";
+    let message = "Unexpected error";
     try {
       const errorBody = (await response.json()) as { message?: string };
       message = errorBody.message ?? message;

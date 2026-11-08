@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useAuth } from "../auth/AuthContext";
+import { PASSWORD_MIN_LENGTH } from "../constants";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -15,18 +16,18 @@ export default function LoginPage() {
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
-    if (password.length < 8) {
-      toast.error("A senha deve ter no minimo 8 caracteres");
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      toast.error(`Password must have at least ${PASSWORD_MIN_LENGTH} characters`);
       return;
     }
 
     setLoading(true);
     try {
       await login(email, password);
-      toast.success("Login realizado com sucesso");
+      toast.success("Signed in successfully");
       navigate("/");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao autenticar";
+      const message = error instanceof Error ? error.message : "Sign-in failed";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -36,8 +37,8 @@ export default function LoginPage() {
   return (
     <div className="login-shell">
       <form className="login-card" onSubmit={handleSubmit}>
-        <h1>SGB Biblioteca</h1>
-        <p>Acesse para gerenciar acervo, emprestimos e reservas.</p>
+        <h1>SGB Library</h1>
+        <p>Sign in to manage the catalog, loans and reservations.</p>
 
         <label>
           Email
@@ -51,19 +52,19 @@ export default function LoginPage() {
         </label>
 
         <label>
-          Senha
+          Password
           <input
             type="password"
             required
-            minLength={8}
+            minLength={PASSWORD_MIN_LENGTH}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="minimo 8 caracteres"
+            placeholder={`at least ${PASSWORD_MIN_LENGTH} characters`}
           />
         </label>
 
         <button type="submit" disabled={loading}>
-          {loading ? "Entrando..." : "Entrar"}
+          {loading ? "Signing in..." : "Sign in"}
         </button>
       </form>
     </div>
