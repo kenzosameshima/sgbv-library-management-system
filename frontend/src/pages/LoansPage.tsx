@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Book, Loan } from "../types";
+import { formatMoney } from "../constants";
 
 export default function LoansPage() {
   const { token, user } = useAuth();
@@ -56,10 +57,10 @@ export default function LoansPage() {
         token,
         body: JSON.stringify(payload)
       });
-      toast.success("Emprestimo criado com sucesso");
+      toast.success("Loan created successfully");
       loadActiveLoans().catch(() => undefined);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao criar emprestimo");
+      toast.error(error instanceof Error ? error.message : "Could not create loan");
     }
   }
 
@@ -79,26 +80,26 @@ export default function LoansPage() {
       });
 
       if (response.fineAmount > 0) {
-        toast.warn(`Devolucao registrada com multa de R$ ${response.fineAmount.toFixed(2)}`);
+        toast.warn(`Return recorded with a fine of ${formatMoney(response.fineAmount)}`);
       } else {
-        toast.success("Devolucao registrada sem multa");
+        toast.success("Return recorded with no fine");
       }
       loadActiveLoans().catch(() => undefined);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro na devolucao");
+      toast.error(error instanceof Error ? error.message : "Could not return loan");
     }
   }
 
   return (
     <section>
       <header className="page-header">
-        <h2>Emprestimos e Devolucoes</h2>
-        <p>Solicite emprestimo e devolva sem digitar ID de livro.</p>
+        <h2>Loans and Returns</h2>
+        <p>Request a loan and return books without typing a book ID.</p>
       </header>
 
       <form className="panel-form" onSubmit={handleLoan}>
         <label>
-          Book ID (somente para criar emprestimo)
+          Book ID (only needed to create a loan)
           <input value={bookId} onChange={(event) => setBookId(event.target.value)} required />
         </label>
 
@@ -110,7 +111,7 @@ export default function LoansPage() {
         )}
 
         <div className="row-actions">
-          <button type="submit">Solicitar Emprestimo</button>
+          <button type="submit">Request Loan</button>
         </div>
       </form>
 
@@ -119,9 +120,9 @@ export default function LoansPage() {
           <thead>
             <tr>
               <th>Loan ID</th>
-              <th>Livro</th>
-              <th>Vencimento</th>
-              <th>Acoes</th>
+              <th>Book</th>
+              <th>Due date</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -134,7 +135,7 @@ export default function LoansPage() {
                   <td>{new Date(loan.due_date).toLocaleDateString()}</td>
                   <td>
                     <button type="button" onClick={() => handleReturnByLoanId(loan.id)}>
-                      Devolver
+                      Return
                     </button>
                   </td>
                 </tr>

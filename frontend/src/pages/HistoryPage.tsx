@@ -29,8 +29,8 @@ export default function HistoryPage() {
   return (
     <section>
       <header className="page-header">
-        <h2>Historico</h2>
-        <p>Emprestimos e devolucoes do usuario autenticado.</p>
+        <h2>History</h2>
+        <p>Loans and returns of the signed-in user.</p>
       </header>
 
       <div className="table-wrap">
@@ -40,8 +40,8 @@ export default function HistoryPage() {
               <th>Loan ID</th>
               <th>Book ID</th>
               <th>Status</th>
-              <th>Emprestimo</th>
-              <th>Devolucao</th>
+              <th>Loan</th>
+              <th>Return</th>
             </tr>
           </thead>
           <tbody>
@@ -59,11 +59,11 @@ export default function HistoryPage() {
       </div>
 
       <div className="pagination">
-        <button onClick={() => setPage((current) => Math.max(1, current - 1))}>Anterior</button>
+        <button onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
         <span>
-          Pagina {page} de {totalPages}
+          Page {page} of {totalPages}
         </span>
-        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Proxima</button>
+        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Next</button>
       </div>
     </section>
   );

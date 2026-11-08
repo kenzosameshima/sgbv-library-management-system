@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { toast } from "react-toastify";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { LOCAL_RESERVATIONS_KEY } from "../constants";
 
 interface LocalReservation {
   bookId: string;
@@ -15,7 +16,7 @@ export default function ReservationsPage() {
   const [localReservations, setLocalReservations] = useState<LocalReservation[]>([]);
 
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem("sgb_reservations") ?? "[]") as LocalReservation[];
+    const stored = JSON.parse(localStorage.getItem(LOCAL_RESERVATIONS_KEY) ?? "[]") as LocalReservation[];
     setLocalReservations(stored);
   }, []);
 
@@ -31,27 +32,27 @@ export default function ReservationsPage() {
       });
 
       const next = [...localReservations, { bookId, createdAt: new Date().toISOString() }];
-      localStorage.setItem("sgb_reservations", JSON.stringify(next));
+      localStorage.setItem(LOCAL_RESERVATIONS_KEY, JSON.stringify(next));
       setLocalReservations(next);
-      toast.success("Reserva enviada para fila FIFO");
+      toast.success("Reservation added to the FIFO queue");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao reservar");
+      toast.error(error instanceof Error ? error.message : "Could not create reservation");
     }
   }
 
   return (
     <section>
       <header className="page-header">
-        <h2>Reservas</h2>
-        <p>Reserve livros indisponiveis e acompanhe solicitacoes recentes.</p>
+        <h2>Reservations</h2>
+        <p>Reserve unavailable books and track recent requests.</p>
       </header>
 
       <form className="panel-form" onSubmit={handleReserve}>
         <label>
-          Book ID indisponivel
+          Unavailable book ID
           <input value={bookId} onChange={(event) => setBookId(event.target.value)} required />
         </label>
-        <button type="submit">Criar Reserva</button>
+        <button type="submit">Create Reservation</button>
       </form>
 
       <div className="table-wrap">
@@ -59,7 +60,7 @@ export default function ReservationsPage() {
           <thead>
             <tr>
               <th>Book ID</th>
-              <th>Criada em</th>
+              <th>Created at</th>
             </tr>
           </thead>
           <tbody>

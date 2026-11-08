@@ -70,20 +70,20 @@ export default function AdminBooksPage() {
           token,
           body: JSON.stringify(form)
         });
-        toast.success("Livro atualizado");
+        toast.success("Book updated");
       } else {
         await apiRequest("/books", {
           method: "POST",
           token,
           body: JSON.stringify(form)
         });
-        toast.success("Livro cadastrado");
+        toast.success("Book created");
       }
 
       setOpen(false);
       loadBooks().catch(() => undefined);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao salvar livro");
+      toast.error(error instanceof Error ? error.message : "Could not save book");
     }
   }
 
@@ -95,10 +95,10 @@ export default function AdminBooksPage() {
         method: "DELETE",
         token
       });
-      toast.success("Livro removido");
+      toast.success("Book removed");
       loadBooks().catch(() => undefined);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao remover livro");
+      toast.error(error instanceof Error ? error.message : "Could not remove book");
     }
   }
 
@@ -109,23 +109,23 @@ export default function AdminBooksPage() {
     <section>
       <header className="page-header with-action">
         <div>
-          <h2>Gerenciar Livros</h2>
-          <p>Cadastro, edicao e remocao do acervo.</p>
+          <h2>Manage Books</h2>
+          <p>Add, edit and remove catalog books.</p>
         </div>
-        <button onClick={openCreateModal}>Novo Livro</button>
+        <button onClick={openCreateModal}>New Book</button>
       </header>
 
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Titulo</th>
-              <th>Autor</th>
-              <th>Categoria</th>
+              <th>Title</th>
+              <th>Author</th>
+              <th>Category</th>
               <th>ISBN</th>
               <th>Total</th>
-              <th>Disponiveis</th>
-              <th>Acoes</th>
+              <th>Available</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -138,8 +138,8 @@ export default function AdminBooksPage() {
                 <td>{book.total_copies}</td>
                 <td>{book.available_copies}</td>
                 <td className="row-actions">
-                  <button onClick={() => openEditModal(book)}>Editar</button>
-                  <button onClick={() => removeBook(book.id)}>Remover</button>
+                  <button onClick={() => openEditModal(book)}>Edit</button>
+                  <button onClick={() => removeBook(book.id)}>Remove</button>
                 </td>
               </tr>
             ))}
@@ -148,25 +148,25 @@ export default function AdminBooksPage() {
       </div>
 
       <div className="pagination">
-        <button onClick={() => setPage((current) => Math.max(1, current - 1))}>Anterior</button>
+        <button onClick={() => setPage((current) => Math.max(1, current - 1))}>Previous</button>
         <span>
-          Pagina {page} de {totalPages}
+          Page {page} of {totalPages}
         </span>
-        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Proxima</button>
+        <button onClick={() => setPage((current) => Math.min(totalPages, current + 1))}>Next</button>
       </div>
 
-      <Modal title={editingBook ? "Editar Livro" : "Novo Livro"} open={open} onClose={() => setOpen(false)}>
+      <Modal title={editingBook ? "Edit Book" : "New Book"} open={open} onClose={() => setOpen(false)}>
         <form className="panel-form" onSubmit={submitForm}>
           <label>
-            Titulo
+            Title
             <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
           </label>
           <label>
-            Autor
+            Author
             <input value={form.author} onChange={(event) => setForm({ ...form, author: event.target.value })} required />
           </label>
           <label>
-            Categoria
+            Category
             <input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} required />
           </label>
           <label>
@@ -174,7 +174,7 @@ export default function AdminBooksPage() {
             <input value={form.isbn} onChange={(event) => setForm({ ...form, isbn: event.target.value })} required />
           </label>
           <label>
-            Total de Copias
+            Total Copies
             <input
               type="number"
               min={1}
@@ -183,7 +183,7 @@ export default function AdminBooksPage() {
               required
             />
           </label>
-          <button type="submit">Salvar</button>
+          <button type="submit">Save</button>
         </form>
       </Modal>
     </section>

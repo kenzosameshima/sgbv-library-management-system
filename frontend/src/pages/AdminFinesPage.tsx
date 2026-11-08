@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import type { Fine } from "../types";
+import { formatMoney } from "../constants";
 
 export default function AdminFinesPage() {
   const { token } = useAuth();
@@ -18,7 +19,7 @@ export default function AdminFinesPage() {
       const data = await apiRequest<Fine[]>(`/users/${userId}/fines`, { token });
       setFines(data);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao consultar multas");
+      toast.error(error instanceof Error ? error.message : "Could not load fines");
     }
   }
 
@@ -31,18 +32,18 @@ export default function AdminFinesPage() {
         token,
         body: JSON.stringify({ fineId })
       });
-      toast.success("Pagamento de multa registrado");
+      toast.success("Fine payment recorded");
       setFines((current) => current.map((fine) => (fine.id === fineId ? { ...fine, paid: true } : fine)));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao pagar multa");
+      toast.error(error instanceof Error ? error.message : "Could not pay fine");
     }
   }
 
   return (
     <section>
       <header className="page-header">
-        <h2>Gerenciar Multas</h2>
-        <p>Consulte multas de um usuario e registre pagamentos.</p>
+        <h2>Manage Fines</h2>
+        <p>Look up a user's fines and record payments.</p>
       </header>
 
       <form className="inline-form" onSubmit={fetchFines}>
@@ -52,7 +53,7 @@ export default function AdminFinesPage() {
           placeholder="User ID"
           required
         />
-        <button type="submit">Consultar</button>
+        <button type="submit">Look up</button>
       </form>
 
       <div className="table-wrap">
@@ -61,9 +62,9 @@ export default function AdminFinesPage() {
             <tr>
               <th>Fine ID</th>
               <th>Loan ID</th>
-              <th>Valor</th>
+              <th>Amount</th>
               <th>Status</th>
-              <th>Acoes</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -71,11 +72,11 @@ export default function AdminFinesPage() {
               <tr key={fine.id}>
                 <td>{fine.id}</td>
                 <td>{fine.loan_id}</td>
-                <td>R$ {fine.amount.toFixed(2)}</td>
-                <td>{fine.paid ? "Paga" : "Pendente"}</td>
+                <td>{formatMoney(fine.amount)}</td>
+                <td>{fine.paid ? "Paid" : "Pending"}</td>
                 <td>
                   <button disabled={fine.paid} onClick={() => payFine(fine.id)}>
-                    Registrar Pagamento
+                    Record Payment
                   </button>
                 </td>
               </tr>
