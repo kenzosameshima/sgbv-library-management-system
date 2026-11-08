@@ -246,7 +246,7 @@ describe("loans and returns over HTTP", () => {
     const res = await as(user).post("/api/v1/loans").send({ bookId });
 
     expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/reserva/i);
+    expect(res.body.message).toMatch(/reservation/i);
   });
 
   it("returns a loan by book and frees the copy", async () => {
@@ -318,5 +318,49 @@ describe("reservations", () => {
 
     expect((await as(stranger).post("/api/v1/loans").send({ bookId })).status).toBe(400);
     expect((await as(waiting).post("/api/v1/loans").send({ bookId })).status).toBe(201);
+  });
+});
+
+describe("fines", () => {
+  async function userWithOverdueReturn() {
+    const user = await seedUser();
+    const bookId = await seedBook(1);
+    const loan = await as(user).post("/api/v1/loans").send({ bookId });
+    await db.query("UPDATE loans SET due_date = NOW() - INTERVAL '36 hours' WHERE id = $1", [loan.body.id]);
+    await as(user).post("/api/v1/returns").send({ bookId });
+    return user;
+  }
+
+  it("lists fine amounts as numbers", async () => {
+    const user = await userWithOverdueReturn();
+
+    const res = await as(user).get(`/api/v1/users/${user.id}/fines`);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(1);
+    expect(typeof res.body[0].amount).toBe("number");
+    expect(res.body[0].amount).toBe(4);
+  });
+
+  it("lets an admin settle a fine, which unblocks new loans", async () => {
+    const [user, admin] = [await userWithOverdueReturn(), await seedUser("ADMIN")];
+    const otherBook = await seedBook(1);
+    expect((await as(user).post("/api/v1/loans").send({ bookId: otherBook })).status).toBe(400);
+    const [fine] = (await as(user).get(`/api/v1/users/${user.id}/fines`)).body;
+
+    const paid = await as(admin).post("/api/v1/users/fines/pay").send({ fineId: fine.id });
+    const again = await as(admin).post("/api/v1/users/fines/pay").send({ fineId: fine.id });
+
+    expect(paid.status).toBe(200);
+    expect(paid.body).toMatchObject({ paid: true, amount: 4 });
+    expect(again.status).toBe(404);
+    expect((await as(user).post("/api/v1/loans").send({ bookId: otherBook })).status).toBe(201);
+  });
+
+  it("forbids a regular user from paying fines or reading someone else's", async () => {
+    const [user, other] = [await userWithOverdueReturn(), await seedUser()];
+
+    expect((await as(other).get(`/api/v1/users/${user.id}/fines`)).status).toBe(403);
+    expect((await as(user).post("/api/v1/users/fines/pay").send({ fineId: "00000000-0000-4000-8000-000000000000" })).status).toBe(403);
   });
 });
