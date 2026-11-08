@@ -30,7 +30,7 @@ export async function withTransaction<T>(callback: (client: PoolClientLike) => P
   }
 }
 
-interface PoolClientLike {
+export interface PoolClientLike {
   query: <T extends QueryResultRow = QueryResultRow>(text: string, params?: any[]) => Promise<{ rows: T[] }>;
   release: () => void;
 }

@@ -1,49 +1,69 @@
 import { HttpError } from "../utils/httpError";
-import { FINE_PER_DAY, LOAN_DAYS, MAX_ACTIVE_LOANS } from "../utils/constants";
-import { findBookById } from "../repositories/bookRepository";
-import { findUserById } from "../repositories/userRepository";
-import { countActiveLoansByUser } from "../repositories/loanRepository";
-import { createFine, hasPendingFines } from "../repositories/fineRepository";
-import { withTransaction } from "../config/db";
+import { FINE_PER_DAY, LOAN_DAYS, MAX_ACTIVE_LOANS, RESERVATION_EXPIRATION_HOURS } from "../utils/constants";
+import { PoolClientLike, withTransaction } from "../config/db";
+import { Loan } from "../models/types";
 
-export async function createLoanForUser(userId: string, bookId: string) {
-  const user = await findUserById(userId);
-  if (!user) {
-    throw new HttpError(404, "Usuario nao encontrado");
-  }
+const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
-  if (await hasPendingFines(userId)) {
-    throw new HttpError(400, "Usuario possui multas pendentes");
-  }
+const BOOK_UNAVAILABLE = "Livro indisponivel. Considere criar uma reserva";
 
-  const activeLoans = await countActiveLoansByUser(userId);
-  if (activeLoans >= MAX_ACTIVE_LOANS) {
-    throw new HttpError(400, "Limite maximo de emprestimos ativos atingido");
-  }
+export interface ReturnResult {
+  loan: Loan;
+  fineAmount: number;
+}
 
-  const book = await findBookById(bookId);
-  if (!book) {
-    throw new HttpError(404, "Livro nao encontrado");
-  }
-
-  if (book.available_copies <= 0) {
-    throw new HttpError(400, "Livro indisponivel. Considere criar uma reserva");
-  }
-
-  const dueDate = new Date(Date.now() + LOAN_DAYS * 24 * 60 * 60 * 1000);
+/**
+ * All checks run inside the transaction, after locking the user and book rows,
+ * so concurrent requests for the same user or book are serialised.
+ */
+export async function createLoanForUser(userId: string, bookId: string): Promise<Loan> {
+  const dueDate = new Date(Date.now() + LOAN_DAYS * DAY_MS);
 
   return withTransaction(async (client) => {
-    const bookUpdate = await client.query<{ id: string }>(
-      `UPDATE books
-       SET available_copies = available_copies - 1
-       WHERE id = $1 AND available_copies > 0
-       RETURNING id`,
+    const user = await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [userId]);
+    if (user.rows.length === 0) {
+      throw new HttpError(404, "Usuario nao encontrado");
+    }
+
+    const pendingFines = await client.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM fines WHERE user_id = $1 AND paid = FALSE",
+      [userId]
+    );
+    if (Number(pendingFines.rows[0].count) > 0) {
+      throw new HttpError(400, "Usuario possui multas pendentes");
+    }
+
+    const activeLoans = await client.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM loans WHERE user_id = $1 AND status = 'ACTIVE'",
+      [userId]
+    );
+    if (Number(activeLoans.rows[0].count) >= MAX_ACTIVE_LOANS) {
+      throw new HttpError(400, "Limite maximo de emprestimos ativos atingido");
+    }
+
+    const book = await client.query<{ available_copies: number }>(
+      "SELECT available_copies FROM books WHERE id = $1 FOR UPDATE",
       [bookId]
     );
-
-    if (bookUpdate.rows.length === 0) {
-      throw new HttpError(400, "Livro indisponivel. Considere criar uma reserva");
+    if (book.rows.length === 0) {
+      throw new HttpError(404, "Livro nao encontrado");
     }
+
+    // Copies offered to other users' reservations are not up for grabs.
+    const heldForOthers = await client.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM reservations
+       WHERE book_id = $1
+         AND user_id <> $2
+         AND status = 'AVAILABLE'
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+      [bookId, userId]
+    );
+    if (book.rows[0].available_copies - Number(heldForOthers.rows[0].count) <= 0) {
+      throw new HttpError(400, BOOK_UNAVAILABLE);
+    }
+
+    await client.query("UPDATE books SET available_copies = available_copies - 1 WHERE id = $1", [bookId]);
 
     await client.query(
       `UPDATE reservations
@@ -52,7 +72,7 @@ export async function createLoanForUser(userId: string, bookId: string) {
       [userId, bookId]
     );
 
-    const createdLoan = await client.query(
+    const createdLoan = await client.query<Loan>(
       `INSERT INTO loans (user_id, book_id, due_date, status)
        VALUES ($1, $2, $3, 'ACTIVE')
        RETURNING *`,
@@ -63,125 +83,91 @@ export async function createLoanForUser(userId: string, bookId: string) {
   });
 }
 
-export async function returnLoanForUser(userId: string, bookId: string) {
+export async function returnLoanForUser(userId: string, bookId: string): Promise<ReturnResult> {
   return withTransaction(async (client) => {
-    const activeLoan = await client.query(
+    const found = await client.query<Loan>(
       `SELECT * FROM loans
        WHERE user_id = $1 AND book_id = $2 AND status = 'ACTIVE'
        ORDER BY created_at DESC
-       LIMIT 1`,
+       LIMIT 1
+       FOR UPDATE`,
       [userId, bookId]
     );
 
-    if (activeLoan.rows.length === 0) {
+    if (found.rows.length === 0) {
       throw new HttpError(404, "Emprestimo ativo nao encontrado para este usuario e livro");
     }
 
-    const finalizedLoan = await client.query(
-      `UPDATE loans
-       SET status = 'RETURNED', return_date = NOW()
-       WHERE id = $1 AND status = 'ACTIVE'
-       RETURNING *`,
-      [activeLoan.rows[0].id]
-    );
-
-    if (finalizedLoan.rows.length === 0) {
-      throw new HttpError(500, "Nao foi possivel finalizar o emprestimo");
-    }
-
-    const finalized = finalizedLoan.rows[0];
-
-    await client.query(
-      `UPDATE books
-       SET available_copies = LEAST(total_copies, available_copies + 1)
-       WHERE id = $1`,
-      [bookId]
-    );
-
-    const fineAmount = await applyFineIfOverdue(client, userId, finalized.id, finalized.due_date);
-    await processReservationQueueTx(client, bookId);
-
-    return {
-      loan: finalized,
-      fineAmount
-    };
+    return finalizeLoan(client, found.rows[0]);
   });
 }
 
-export async function returnLoanByIdForUser(userId: string, loanId: string) {
+export async function returnLoanByIdForUser(userId: string, loanId: string): Promise<ReturnResult> {
   return withTransaction(async (client) => {
-    const activeLoan = await client.query(
-      "SELECT * FROM loans WHERE id = $1 AND status = 'ACTIVE' LIMIT 1",
+    const found = await client.query<Loan>(
+      "SELECT * FROM loans WHERE id = $1 AND status = 'ACTIVE' FOR UPDATE",
       [loanId]
     );
 
-    if (activeLoan.rows.length === 0) {
+    if (found.rows.length === 0) {
       throw new HttpError(404, "Emprestimo ativo nao encontrado");
     }
 
-    if (activeLoan.rows[0].user_id !== userId) {
+    if (found.rows[0].user_id !== userId) {
       throw new HttpError(403, "Sem permissao para devolver este emprestimo");
     }
 
-    const finalizedLoan = await client.query(
-      `UPDATE loans
-       SET status = 'RETURNED', return_date = NOW()
-       WHERE id = $1 AND status = 'ACTIVE'
-       RETURNING *`,
-      [loanId]
-    );
-
-    if (finalizedLoan.rows.length === 0) {
-      throw new HttpError(500, "Nao foi possivel finalizar o emprestimo");
-    }
-
-    const finalized = finalizedLoan.rows[0];
-
-    await client.query(
-      `UPDATE books
-       SET available_copies = LEAST(total_copies, available_copies + 1)
-       WHERE id = $1`,
-      [finalized.book_id]
-    );
-
-    const fineAmount = await applyFineIfOverdue(client, userId, finalized.id, finalized.due_date);
-    await processReservationQueueTx(client, finalized.book_id);
-
-    return {
-      loan: finalized,
-      fineAmount
-    };
+    return finalizeLoan(client, found.rows[0]);
   });
 }
 
-async function applyFineIfOverdue(
-  client: { query: (text: string, params?: any[]) => Promise<{ rows: any[] }> },
-  userId: string,
-  loanId: string,
-  dueDate: string | Date
-): Promise<number> {
-  const now = new Date();
-  if (now <= new Date(dueDate)) {
+/** Shared return path: close the loan, free the copy, charge any fine, advance the queue. */
+async function finalizeLoan(client: PoolClientLike, loan: Loan): Promise<ReturnResult> {
+  const finalizedLoan = await client.query<Loan>(
+    `UPDATE loans
+     SET status = 'RETURNED', return_date = NOW()
+     WHERE id = $1 AND status = 'ACTIVE'
+     RETURNING *`,
+    [loan.id]
+  );
+
+  if (finalizedLoan.rows.length === 0) {
+    throw new HttpError(409, "Emprestimo ja foi devolvido");
+  }
+
+  const finalized = finalizedLoan.rows[0];
+
+  await client.query(
+    `UPDATE books
+     SET available_copies = LEAST(total_copies, available_copies + 1)
+     WHERE id = $1`,
+    [finalized.book_id]
+  );
+
+  const fineAmount = await applyFineIfOverdue(client, finalized);
+  await processReservationQueue(client, finalized.book_id);
+
+  return { loan: finalized, fineAmount };
+}
+
+async function applyFineIfOverdue(client: PoolClientLike, loan: Loan): Promise<number> {
+  const overdueMs = Date.now() - new Date(loan.due_date).getTime();
+  if (overdueMs <= 0) {
     return 0;
   }
 
-  const overdueMs = now.getTime() - new Date(dueDate).getTime();
-  const overdueDays = Math.ceil(overdueMs / (24 * 60 * 60 * 1000));
-  const fineAmount = overdueDays * FINE_PER_DAY;
+  const fineAmount = Math.ceil(overdueMs / DAY_MS) * FINE_PER_DAY;
 
   await client.query(
     `INSERT INTO fines (user_id, loan_id, amount, paid)
      VALUES ($1, $2, $3, FALSE)`,
-    [userId, loanId, fineAmount]
+    [loan.user_id, loan.id, fineAmount]
   );
 
   return fineAmount;
 }
 
-async function processReservationQueueTx(
-  client: { query: (text: string, params?: any[]) => Promise<{ rows: any[] }> },
-  bookId: string
-): Promise<void> {
+async function processReservationQueue(client: PoolClientLike, bookId: string): Promise<void> {
   await client.query(
     `UPDATE reservations
      SET status = 'EXPIRED'
@@ -192,11 +178,12 @@ async function processReservationQueueTx(
     [bookId]
   );
 
-  const next = await client.query(
+  const next = await client.query<{ id: string }>(
     `SELECT id FROM reservations
      WHERE book_id = $1 AND status = 'QUEUED'
      ORDER BY created_at ASC
-     LIMIT 1`,
+     LIMIT 1
+     FOR UPDATE`,
     [bookId]
   );
 
@@ -204,11 +191,9 @@ async function processReservationQueueTx(
     return;
   }
 
-  const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
-  await client.query(
-    `UPDATE reservations
-     SET status = 'AVAILABLE', expires_at = $2
-     WHERE id = $1`,
-    [next.rows[0].id, expiresAt]
-  );
+  const expiresAt = new Date(Date.now() + RESERVATION_EXPIRATION_HOURS * HOUR_MS);
+  await client.query("UPDATE reservations SET status = 'AVAILABLE', expires_at = $2 WHERE id = $1", [
+    next.rows[0].id,
+    expiresAt
+  ]);
 }
