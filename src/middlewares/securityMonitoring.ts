@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { logger } from "../config/logger";
 import { MS_PER_MINUTE, SUSPICIOUS_ALERT_THRESHOLD, SUSPICIOUS_STATUS_CODES, SUSPICIOUS_WINDOW_MS } from "../utils/constants";
 
 interface CounterBucket {
@@ -40,14 +41,17 @@ export function securityMonitoring(req: Request, res: Response, next: NextFuncti
     suspiciousBuckets.set(key, bucket);
 
     if (bucket.count === SUSPICIOUS_ALERT_THRESHOLD) {
-      console.warn("[security-monitor] suspicious request pattern", {
-        ip,
-        path: req.path,
-        statusCode: res.statusCode,
-        count: bucket.count,
-        windowMinutes: SUSPICIOUS_WINDOW_MS / MS_PER_MINUTE,
-        latencyMs: now - startedAt
-      });
+      logger.warn(
+        {
+          ip,
+          path: req.path,
+          statusCode: res.statusCode,
+          count: bucket.count,
+          windowMinutes: SUSPICIOUS_WINDOW_MS / MS_PER_MINUTE,
+          latencyMs: now - startedAt
+        },
+        "Suspicious request pattern"
+      );
     }
   });
 

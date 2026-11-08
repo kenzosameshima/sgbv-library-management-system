@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { HttpError } from "../utils/httpError";
+import { logger } from "../config/logger";
 
 /**
  * Standardised error response body
@@ -71,15 +72,15 @@ export function secureErrorHandler(err: Error, _req: Request, res: Response, _ne
     timestamp
   };
 
-  // Logged server-side only
-  console.error(`[${timestamp}] Unhandled error:`, {
-    name: err.name,
-    type: err.constructor.name,
-    path: _req.path,
-    method: _req.method,
-    // Stack traces are logged outside production only
-    ...(process.env.NODE_ENV !== "production" && { stack: err.stack })
-  });
+  // Logged server-side only; stack traces are kept out of production logs
+  logger.error(
+    {
+      path: _req.path,
+      method: _req.method,
+      err: process.env.NODE_ENV === "production" ? { name: err.name, type: err.constructor.name } : err
+    },
+    "Unhandled error"
+  );
 
   res.status(500).json(response);
 }
