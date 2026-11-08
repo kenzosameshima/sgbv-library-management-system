@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -10,8 +9,9 @@ vi.mock("../../src/config/db", () => ({
 }));
 
 import { createBook, findBookById, updateBook } from "../../src/repositories/bookRepository";
+import { loadSchema } from "../helpers/schema";
 
-const schema = readFileSync("config/schema.sql", "utf8").replace(/CREATE EXTENSION[^;]*;/, "");
+const schema = loadSchema();
 
 const details = { title: "Dom Casmurro", author: "Machado de Assis", category: "Romance", isbn: "9788535911664" };
 
