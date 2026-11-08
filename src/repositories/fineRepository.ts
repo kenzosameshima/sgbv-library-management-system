@@ -1,28 +1,11 @@
 import { query } from "../config/db";
 import { Fine } from "../models/types";
 
-export async function hasPendingFines(userId: string): Promise<boolean> {
-  const rows = await query<{ count: string }>(
-    "SELECT COUNT(*)::text AS count FROM fines WHERE user_id = $1 AND paid = FALSE",
-    [userId]
-  );
-
-  return Number(rows[0]?.count ?? 0) > 0;
-}
-
-export async function createFine(data: { userId: string; loanId: string; amount: number }): Promise<Fine> {
-  const rows = await query<Fine>(
-    `INSERT INTO fines (user_id, loan_id, amount, paid)
-     VALUES ($1, $2, $3, FALSE)
-     RETURNING *`,
-    [data.userId, data.loanId, data.amount]
-  );
-
-  return rows[0];
-}
+// pg returns NUMERIC as a string; cast so `amount` matches the Fine type.
+const FINE_COLUMNS = "id, user_id, loan_id, amount::float8 AS amount, paid, created_at, paid_at";
 
 export async function listFinesByUser(userId: string): Promise<Fine[]> {
-  return query<Fine>("SELECT * FROM fines WHERE user_id = $1 ORDER BY created_at DESC", [userId]);
+  return query<Fine>(`SELECT ${FINE_COLUMNS} FROM fines WHERE user_id = $1 ORDER BY created_at DESC`, [userId]);
 }
 
 export async function payFine(fineId: string): Promise<Fine | null> {
@@ -30,7 +13,7 @@ export async function payFine(fineId: string): Promise<Fine | null> {
     `UPDATE fines
      SET paid = TRUE, paid_at = NOW()
      WHERE id = $1 AND paid = FALSE
-     RETURNING *`,
+     RETURNING ${FINE_COLUMNS}`,
     [fineId]
   );
 
