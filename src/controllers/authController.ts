@@ -13,14 +13,15 @@ import {
 } from "../repositories/tokenRepository";
 import { env } from "../config/env";
 import { clearCsrfCookie, issueCsrfCookie } from "../middlewares/csrf";
+import { ACCESS_COOKIE_MAX_AGE_MS, MS_PER_DAY, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../utils/constants";
 
 const loginSchema = z.object({
   email: createEmailSchema(),
-  password: createStringSchema(8, 255, "Senha")
+  password: createStringSchema(PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, "Password")
 }).strict();
 
 const refreshSchema = z.object({
-  refreshToken: createStringSchema(1, 1000, "Token de refresh")
+  refreshToken: createStringSchema(1, 1000, "Refresh token")
 }).strict();
 
 function authCookieOptions(maxAgeMs: number) {
@@ -34,12 +35,21 @@ function authCookieOptions(maxAgeMs: number) {
   };
 }
 
-function setSessionCookies(res: Response, accessToken: string, refreshToken: string): string {
-  const accessMaxAgeMs = 15 * 60 * 1000;
-  const refreshMaxAgeMs = env.jwtRefreshExpiresInDays * 24 * 60 * 60 * 1000;
+const refreshTokenTtlMs = env.jwtRefreshExpiresInDays * MS_PER_DAY;
 
-  res.cookie(env.accessCookieName, accessToken, authCookieOptions(accessMaxAgeMs));
-  res.cookie(env.refreshCookieName, refreshToken, authCookieOptions(refreshMaxAgeMs));
+function readRefreshToken(req: Request): string | undefined {
+  const fromBody: unknown = req.body?.refreshToken;
+  if (typeof fromBody === "string") {
+    return fromBody;
+  }
+
+  const fromCookie: unknown = req.cookies?.[env.refreshCookieName];
+  return typeof fromCookie === "string" ? fromCookie : undefined;
+}
+
+function setSessionCookies(res: Response, accessToken: string, refreshToken: string): string {
+  res.cookie(env.accessCookieName, accessToken, authCookieOptions(ACCESS_COOKIE_MAX_AGE_MS));
+  res.cookie(env.refreshCookieName, refreshToken, authCookieOptions(refreshTokenTtlMs));
 
   return issueCsrfCookie(res);
 }
@@ -58,12 +68,12 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     const user = await findUserByEmail(email);
 
     if (!user) {
-      throw new HttpError(401, "Credenciais invalidas");
+      throw new HttpError(401, "Invalid credentials");
     }
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
-      throw new HttpError(401, "Credenciais invalidas");
+      throw new HttpError(401, "Invalid credentials");
     }
 
     const payload = {
@@ -75,7 +85,7 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
-    const refreshExpiresAt = new Date(Date.now() + env.jwtRefreshExpiresInDays * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(Date.now() + refreshTokenTtlMs);
     await saveRefreshToken({ userId: user.id, token: refreshToken, expiresAt: refreshExpiresAt });
 
     const csrfToken = setSessionCookies(res, accessToken, refreshToken);
@@ -96,29 +106,28 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
 
 export async function refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tokenFromBody = req.body?.refreshToken as string | undefined;
-    const refreshToken = tokenFromBody ?? (req.cookies?.[env.refreshCookieName] as string | undefined);
+    const refreshToken = readRefreshToken(req);
     if (!refreshToken) {
-      throw new HttpError(401, "Refresh token invalido ou expirado");
+      throw new HttpError(401, "Invalid or expired refresh token");
     }
 
     refreshSchema.parse({ refreshToken });
 
     const ownerId = await findRefreshTokenOwner(refreshToken);
     if (!ownerId) {
-      throw new HttpError(401, "Refresh token invalido ou expirado");
+      throw new HttpError(401, "Invalid or expired refresh token");
     }
 
     const payload = verifyRefreshToken(refreshToken);
     if (payload.id !== ownerId) {
-      throw new HttpError(401, "Refresh token invalido");
+      throw new HttpError(401, "Invalid refresh token");
     }
 
     await revokeRefreshToken(refreshToken);
 
     const accessToken = signAccessToken(payload);
     const nextRefreshToken = signRefreshToken(payload);
-    const refreshExpiresAt = new Date(Date.now() + env.jwtRefreshExpiresInDays * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(Date.now() + refreshTokenTtlMs);
     await saveRefreshToken({ userId: payload.id, token: nextRefreshToken, expiresAt: refreshExpiresAt });
 
     const csrfToken = setSessionCookies(res, accessToken, nextRefreshToken);
@@ -131,8 +140,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction): 
 
 export async function logout(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const tokenFromBody = req.body?.refreshToken as string | undefined;
-    const refreshToken = tokenFromBody ?? (req.cookies?.[env.refreshCookieName] as string | undefined);
+    const refreshToken = readRefreshToken(req);
     if (refreshToken) {
       await revokeRefreshToken(refreshToken);
     }
@@ -147,7 +155,7 @@ export async function logout(req: Request, res: Response, next: NextFunction): P
 export async function me(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!req.user) {
-      throw new HttpError(401, "Nao autenticado");
+      throw new HttpError(401, "Not authenticated");
     }
 
     res.status(200).json({ user: req.user });

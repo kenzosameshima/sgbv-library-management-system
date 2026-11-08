@@ -8,13 +8,14 @@ import { validatePayloadSize } from "./middlewares/payloadValidation";
 import { requireCsrf } from "./middlewares/csrf";
 import { securityMonitoring } from "./middlewares/securityMonitoring";
 import { env } from "./config/env";
+import { CORS_PREFLIGHT_MAX_AGE_SECONDS, HSTS_MAX_AGE_SECONDS, MAX_REQUEST_BODY_BYTES } from "./utils/constants";
 
 const app = express();
 
-// Preparar CSP connect-src com origem configurada
+// CSP connect-src allows the configured CORS origins
 const cspConnectSrc = ["'self'", ...env.corsAllowedOrigins];
 
-// Security headers com CSP configurado
+// Security headers with CSP
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -31,7 +32,7 @@ app.use(
       }
     },
     hsts: {
-      maxAge: 31536000, // 1 ano em produção
+      maxAge: HSTS_MAX_AGE_SECONDS,
       includeSubDomains: true,
       preload: true
     },
@@ -41,7 +42,7 @@ app.use(
   })
 );
 
-// Permissions-Policy header (Permissions-Policy para evitar abuso de features)
+// Permissions-Policy: disable browser features the app does not use
 app.use((_req, res, next) => {
   res.setHeader(
     "Permissions-Policy",
@@ -63,20 +64,20 @@ app.use(
         return;
       }
 
-      callback(new Error("Origem nao permitida pelo CORS"));
+      callback(new Error("Origin not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
     credentials: true,
-    maxAge: 86400 // 24h cache de preflight
+    maxAge: CORS_PREFLIGHT_MAX_AGE_SECONDS
   })
 );
 
-// Validación de tamaño de payload (máx 1MB)
-app.use(validatePayloadSize(1024 * 1024));
+// Reject oversized payloads early
+app.use(validatePayloadSize(MAX_REQUEST_BODY_BYTES));
 
-// JSON parsing com tamanho máximo
-app.use(express.json({ limit: "1mb" }));
+// JSON parsing with the same size cap
+app.use(express.json({ limit: MAX_REQUEST_BODY_BYTES }));
 app.use(cookieParser());
 app.use(requireCsrf);
 app.use(securityMonitoring);
@@ -87,7 +88,7 @@ app.get("/health", (_req, res) => {
 
 app.use("/api/v1", apiRoutes);
 
-// Handler de erro seguro DEVE ser o último middleware
+// The error handler must be the last middleware
 app.use(secureErrorHandler);
 
 export default app;

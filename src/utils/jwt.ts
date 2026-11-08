@@ -1,12 +1,24 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 import { env } from "../config/env";
 import { Role } from "../models/types";
 
-interface JwtPayload {
-  id: string;
-  role: Role;
-  email: string;
+const jwtPayloadSchema = z.object({
+  id: z.string(),
+  role: z.enum(["USER", "ADMIN"]),
+  email: z.string()
+});
+
+type JwtPayload = z.infer<typeof jwtPayloadSchema> & { role: Role };
+
+/** Narrow a verified token body to the identity claims we sign, rejecting any other shape. */
+function toIdentity(decoded: string | jwt.JwtPayload): JwtPayload {
+  const parsed = jwtPayloadSchema.safeParse(decoded);
+  if (!parsed.success) {
+    throw new jwt.JsonWebTokenError("Unexpected token payload");
+  }
+  return parsed.data;
 }
 
 // Only identity claims are signed: a verified token also carries iat/exp, which jwt.sign rejects alongside expiresIn.
@@ -29,9 +41,9 @@ export function signRefreshToken(payload: JwtPayload): string {
 }
 
 export function verifyAccessToken(token: string): JwtPayload {
-  return jwt.verify(token, env.jwtAccessSecret) as JwtPayload;
+  return toIdentity(jwt.verify(token, env.jwtAccessSecret));
 }
 
 export function verifyRefreshToken(token: string): JwtPayload {
-  return jwt.verify(token, env.jwtRefreshSecret) as JwtPayload;
+  return toIdentity(jwt.verify(token, env.jwtRefreshSecret));
 }

@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { HttpError } from "../utils/httpError";
 
 /**
- * Interface para resposta de erro padronizada
+ * Standardised error response body
  */
 interface ErrorResponse {
   code: string;
@@ -13,23 +13,23 @@ interface ErrorResponse {
 }
 
 /**
- * Mapeamento de erros internos para mensagens públicas seguras
+ * Public-safe messages for internal error names
  */
 const ERROR_MESSAGES: Record<string, string> = {
-  ECONNREFUSED: "Serviço temporariamente indisponível",
-  ENOTFOUND: "Recurso não encontrado",
-  ETIMEDOUT: "Operação expirou. Tente novamente",
-  default: "Erro interno do servidor"
+  ECONNREFUSED: "Service temporarily unavailable",
+  ENOTFOUND: "Resource not found",
+  ETIMEDOUT: "Operation timed out. Try again",
+  default: "Internal server error"
 };
 
 /**
- * Handler centralizado de erros com padronização e segurança
- * Não expõe stack traces ou detalhes internos
+ * Central error handler with a standard response shape.
+ * Never exposes stack traces or internal details to the client.
  */
 export function secureErrorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
   const timestamp = new Date().toISOString();
 
-  // Erros de validação Zod
+  // Zod validation errors
   if (err instanceof ZodError) {
     const details: Record<string, string[]> = {};
 
@@ -43,7 +43,7 @@ export function secureErrorHandler(err: Error, _req: Request, res: Response, _ne
 
     const response: ErrorResponse = {
       code: "VALIDATION_ERROR",
-      message: "Dados de entrada inválidos",
+      message: "Invalid input data",
       details,
       timestamp
     };
@@ -52,7 +52,7 @@ export function secureErrorHandler(err: Error, _req: Request, res: Response, _ne
     return;
   }
 
-  // Erros HTTP conhecidos
+  // Known HTTP errors
   if (err instanceof HttpError) {
     const response: ErrorResponse = {
       code: err.code || "HTTP_ERROR",
@@ -64,32 +64,22 @@ export function secureErrorHandler(err: Error, _req: Request, res: Response, _ne
     return;
   }
 
-  // Erros genéricos - NÃO expõe detalhes internos
+  // Anything else: do not leak internals
   const response: ErrorResponse = {
     code: "INTERNAL_ERROR",
     message: ERROR_MESSAGES[err.name] || ERROR_MESSAGES.default,
     timestamp
   };
 
-  // Log seguro no servidor (sem enviar para cliente)
-  console.error(`[${timestamp}] Erro não tratado:`, {
+  // Logged server-side only
+  console.error(`[${timestamp}] Unhandled error:`, {
     name: err.name,
     type: err.constructor.name,
     path: _req.path,
     method: _req.method,
-    // NÃO incluir stack trace aqui em produção
+    // Stack traces are logged outside production only
     ...(process.env.NODE_ENV !== "production" && { stack: err.stack })
   });
 
   res.status(500).json(response);
-}
-
-/**
- * Wrapper para funções async que não retornam valor (void)
- * Garante que erros de promessas rejeitadas sejam capturados
- */
-export function asyncHandler(fn: (...args: unknown[]) => Promise<void>) {
-  return (req: Request, res: Response, next: NextFunction): void => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
 }

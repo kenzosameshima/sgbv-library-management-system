@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { MS_PER_MINUTE, SUSPICIOUS_ALERT_THRESHOLD, SUSPICIOUS_STATUS_CODES, SUSPICIOUS_WINDOW_MS } from "../utils/constants";
 
 interface CounterBucket {
   count: number;
@@ -6,11 +7,10 @@ interface CounterBucket {
 }
 
 const suspiciousBuckets = new Map<string, CounterBucket>();
-const WINDOW_MS = 10 * 60 * 1000;
 
 function cleanupExpired(now: number): void {
   for (const [key, bucket] of suspiciousBuckets.entries()) {
-    if (now - bucket.firstSeenAt > WINDOW_MS) {
+    if (now - bucket.firstSeenAt > SUSPICIOUS_WINDOW_MS) {
       suspiciousBuckets.delete(key);
     }
   }
@@ -23,7 +23,7 @@ export function securityMonitoring(req: Request, res: Response, next: NextFuncti
     const now = Date.now();
     cleanupExpired(now);
 
-    if (![401, 403, 429].includes(res.statusCode)) {
+    if (!SUSPICIOUS_STATUS_CODES.includes(res.statusCode)) {
       return;
     }
 
@@ -39,13 +39,13 @@ export function securityMonitoring(req: Request, res: Response, next: NextFuncti
     bucket.count += 1;
     suspiciousBuckets.set(key, bucket);
 
-    if (bucket.count === 20) {
+    if (bucket.count === SUSPICIOUS_ALERT_THRESHOLD) {
       console.warn("[security-monitor] suspicious request pattern", {
         ip,
         path: req.path,
         statusCode: res.statusCode,
         count: bucket.count,
-        windowMinutes: WINDOW_MS / 60000,
+        windowMinutes: SUSPICIOUS_WINDOW_MS / MS_PER_MINUTE,
         latencyMs: now - startedAt
       });
     }

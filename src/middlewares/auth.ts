@@ -5,8 +5,8 @@ import { Role } from "../models/types";
 import { env } from "../config/env";
 
 function extractAccessToken(req: Request): string | null {
-  const tokenFromCookie = req.cookies?.[env.accessCookieName] as string | undefined;
-  if (tokenFromCookie) {
+  const tokenFromCookie: unknown = req.cookies?.[env.accessCookieName];
+  if (typeof tokenFromCookie === "string" && tokenFromCookie) {
     return tokenFromCookie;
   }
 
@@ -21,7 +21,7 @@ function extractAccessToken(req: Request): string | null {
 export function authenticate(req: Request, _res: Response, next: NextFunction): void {
   const token = extractAccessToken(req);
   if (!token) {
-    next(new HttpError(401, "Token ausente ou invalido"));
+    next(new HttpError(401, "Missing or invalid token"));
     return;
   }
 
@@ -29,7 +29,7 @@ export function authenticate(req: Request, _res: Response, next: NextFunction): 
     req.user = verifyAccessToken(token);
     next();
   } catch {
-    next(new HttpError(401, "Token invalido ou expirado"));
+    next(new HttpError(401, "Invalid or expired token"));
   }
 }
 
@@ -43,7 +43,7 @@ export function authenticateOptional(req: Request, _res: Response, next: NextFun
   try {
     req.user = verifyAccessToken(token);
   } catch {
-    // Ignore invalid token in optional auth mode; createUser will enforce permissions when needed.
+    // An invalid token is ignored in optional mode; handlers enforce permissions where needed.
   }
 
   next();
@@ -52,12 +52,12 @@ export function authenticateOptional(req: Request, _res: Response, next: NextFun
 export function authorize(...roles: Role[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
-      next(new HttpError(401, "Nao autenticado"));
+      next(new HttpError(401, "Not authenticated"));
       return;
     }
 
     if (!roles.includes(req.user.role)) {
-      next(new HttpError(403, "Sem permissao para esta acao"));
+      next(new HttpError(403, "You do not have permission for this action"));
       return;
     }
 

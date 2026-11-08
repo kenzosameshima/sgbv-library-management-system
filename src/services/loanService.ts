@@ -1,12 +1,9 @@
 import { HttpError } from "../utils/httpError";
-import { FINE_PER_DAY, LOAN_DAYS, MAX_ACTIVE_LOANS, RESERVATION_EXPIRATION_HOURS } from "../utils/constants";
+import { FINE_PER_DAY, LOAN_DAYS, MAX_ACTIVE_LOANS, MS_PER_DAY, MS_PER_HOUR, RESERVATION_EXPIRATION_HOURS } from "../utils/constants";
 import { PoolClientLike, withTransaction } from "../config/db";
 import { Loan } from "../models/types";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
-
-const BOOK_UNAVAILABLE = "Livro indisponivel. Considere criar uma reserva";
+const BOOK_UNAVAILABLE = "Book unavailable. Consider creating a reservation";
 
 export interface ReturnResult {
   loan: Loan;
@@ -18,12 +15,12 @@ export interface ReturnResult {
  * so concurrent requests for the same user or book are serialised.
  */
 export async function createLoanForUser(userId: string, bookId: string): Promise<Loan> {
-  const dueDate = new Date(Date.now() + LOAN_DAYS * DAY_MS);
+  const dueDate = new Date(Date.now() + LOAN_DAYS * MS_PER_DAY);
 
   return withTransaction(async (client) => {
     const user = await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [userId]);
     if (user.rows.length === 0) {
-      throw new HttpError(404, "Usuario nao encontrado");
+      throw new HttpError(404, "User not found");
     }
 
     const pendingFines = await client.query<{ count: string }>(
@@ -31,7 +28,7 @@ export async function createLoanForUser(userId: string, bookId: string): Promise
       [userId]
     );
     if (Number(pendingFines.rows[0].count) > 0) {
-      throw new HttpError(400, "Usuario possui multas pendentes");
+      throw new HttpError(400, "User has unpaid fines");
     }
 
     const activeLoans = await client.query<{ count: string }>(
@@ -39,7 +36,7 @@ export async function createLoanForUser(userId: string, bookId: string): Promise
       [userId]
     );
     if (Number(activeLoans.rows[0].count) >= MAX_ACTIVE_LOANS) {
-      throw new HttpError(400, "Limite maximo de emprestimos ativos atingido");
+      throw new HttpError(400, "Maximum number of active loans reached");
     }
 
     const book = await client.query<{ available_copies: number }>(
@@ -47,7 +44,7 @@ export async function createLoanForUser(userId: string, bookId: string): Promise
       [bookId]
     );
     if (book.rows.length === 0) {
-      throw new HttpError(404, "Livro nao encontrado");
+      throw new HttpError(404, "Book not found");
     }
 
     // Copies offered to other users' reservations are not up for grabs.
@@ -95,7 +92,7 @@ export async function returnLoanForUser(userId: string, bookId: string): Promise
     );
 
     if (found.rows.length === 0) {
-      throw new HttpError(404, "Emprestimo ativo nao encontrado para este usuario e livro");
+      throw new HttpError(404, "Active loan not found for this user and book");
     }
 
     return finalizeLoan(client, found.rows[0]);
@@ -110,11 +107,11 @@ export async function returnLoanByIdForUser(userId: string, loanId: string): Pro
     );
 
     if (found.rows.length === 0) {
-      throw new HttpError(404, "Emprestimo ativo nao encontrado");
+      throw new HttpError(404, "Active loan not found");
     }
 
     if (found.rows[0].user_id !== userId) {
-      throw new HttpError(403, "Sem permissao para devolver este emprestimo");
+      throw new HttpError(403, "You do not have permission to return this loan");
     }
 
     return finalizeLoan(client, found.rows[0]);
@@ -132,7 +129,7 @@ async function finalizeLoan(client: PoolClientLike, loan: Loan): Promise<ReturnR
   );
 
   if (finalizedLoan.rows.length === 0) {
-    throw new HttpError(409, "Emprestimo ja foi devolvido");
+    throw new HttpError(409, "Loan was already returned");
   }
 
   const finalized = finalizedLoan.rows[0];
@@ -156,7 +153,7 @@ async function applyFineIfOverdue(client: PoolClientLike, loan: Loan): Promise<n
     return 0;
   }
 
-  const fineAmount = Math.ceil(overdueMs / DAY_MS) * FINE_PER_DAY;
+  const fineAmount = Math.ceil(overdueMs / MS_PER_DAY) * FINE_PER_DAY;
 
   await client.query(
     `INSERT INTO fines (user_id, loan_id, amount, paid)
@@ -191,7 +188,7 @@ async function processReservationQueue(client: PoolClientLike, bookId: string): 
     return;
   }
 
-  const expiresAt = new Date(Date.now() + RESERVATION_EXPIRATION_HOURS * HOUR_MS);
+  const expiresAt = new Date(Date.now() + RESERVATION_EXPIRATION_HOURS * MS_PER_HOUR);
   await client.query("UPDATE reservations SET status = 'AVAILABLE', expires_at = $2 WHERE id = $1", [
     next.rows[0].id,
     expiresAt

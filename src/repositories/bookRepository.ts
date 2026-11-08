@@ -75,11 +75,3 @@ export async function listBooks(filters: { title?: string; author?: string; cate
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   return query<Book>(`SELECT * FROM books ${where} ORDER BY title`, params);
 }
-
-export async function decrementAvailability(bookId: string): Promise<void> {
-  await query("UPDATE books SET available_copies = available_copies - 1 WHERE id = $1", [bookId]);
-}
-
-export async function incrementAvailability(bookId: string): Promise<void> {
-  await query("UPDATE books SET available_copies = available_copies + 1 WHERE id = $1", [bookId]);
-}

@@ -1,90 +1,51 @@
 import rateLimit from "express-rate-limit";
+import { RATE_LIMITS } from "../utils/constants";
 
-/**
- * Rate limiter para tentativas de login
- * 10 tentativas a cada 15 minutos por IP
- */
+const RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED";
+
+// Keyed by user id once authenticated, otherwise by IP.
+const keyByUserOrIp = (req: { user?: { id: string }; ip?: string }): string => req.user?.id || req.ip || "unknown";
+
+/** Login attempts, per IP. */
 export const loginRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 10,
+  ...RATE_LIMITS.login,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { message: "Muitas tentativas de login. Tente novamente em alguns minutos.", code: "RATE_LIMIT_EXCEEDED" },
-  skip: (req) => {
-    // Em desenvolvimento, não limita se X-Bypass-Rate-Limit é definido
-    return process.env.NODE_ENV !== "production" && req.headers["x-bypass-rate-limit"] === "true";
-  }
+  message: { message: "Too many login attempts. Try again in a few minutes.", code: RATE_LIMIT_EXCEEDED },
+  // Outside production, X-Bypass-Rate-Limit: true skips the limit.
+  skip: (req) => process.env.NODE_ENV !== "production" && req.headers["x-bypass-rate-limit"] === "true"
 });
 
-/**
- * Rate limiter para criação de usuários
- * 5 registros a cada hora por IP
- */
+/** User registrations, per IP. */
 export const userCreationRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 5,
+  ...RATE_LIMITS.userCreation,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { message: "Muitas tentativas de registro. Tente novamente mais tarde.", code: "RATE_LIMIT_EXCEEDED" }
+  message: { message: "Too many registration attempts. Try again later.", code: RATE_LIMIT_EXCEEDED }
 });
 
-/**
- * Rate limiter para refresh de tokens
- * 30 tentativas a cada hora (proteção contra token stuffing)
- */
+/** Token refreshes, per IP (protects against token stuffing). */
 export const refreshTokenRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 30,
+  ...RATE_LIMITS.refreshToken,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { message: "Muitas tentativas de refresh. Tente novamente mais tarde.", code: "RATE_LIMIT_EXCEEDED" }
+  message: { message: "Too many refresh attempts. Try again later.", code: RATE_LIMIT_EXCEEDED }
 });
 
-/**
- * Rate limiter geral para operações de escrita
- * 100 requisições a cada 15 minutos por usuário autenticado
- */
+/** Write operations, per authenticated user. */
 export const generalWriteRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 100,
+  ...RATE_LIMITS.generalWrite,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { message: "Muitas requisições. Tente novamente mais tarde.", code: "RATE_LIMIT_EXCEEDED" },
-  keyGenerator: (req) => {
-    // Usa user ID se autenticado, senão IP
-    return req.user?.id || req.ip || "unknown";
-  }
+  message: { message: "Too many requests. Try again later.", code: RATE_LIMIT_EXCEEDED },
+  keyGenerator: keyByUserOrIp
 });
 
-/**
- * Rate limiter para operações leitura
- * 500 requisições a cada 15 minutos (mais permissivo)
- */
-export const generalReadRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 500,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    return req.user?.id || req.ip || "unknown";
-  },
-  skip: (req) => {
-    // Não limita GET request de saúde
-    return req.path === "/health";
-  }
-});
-
-/**
- * Rate limiter para operações sensíveis (deletar, atualizar status)
- * 20 tentativas a cada hora
- */
+/** Sensitive operations (update, delete), per authenticated user. */
 export const sensitiveOperationRateLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 20,
+  ...RATE_LIMITS.sensitiveOperation,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { message: "Muitas operações sensíveis. Tente novamente mais tarde.", code: "RATE_LIMIT_EXCEEDED" },
-  keyGenerator: (req) => {
-    return req.user?.id || req.ip || "unknown";
-  }
+  message: { message: "Too many sensitive operations. Try again later.", code: RATE_LIMIT_EXCEEDED },
+  keyGenerator: keyByUserOrIp
 });
