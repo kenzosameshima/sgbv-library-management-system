@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { Role } from "../models/types";
@@ -20,7 +21,9 @@ export function signAccessToken(payload: JwtPayload): string {
 }
 
 export function signRefreshToken(payload: JwtPayload): string {
+  // A unique jti keeps two refresh tokens issued in the same second distinct, so rotation always invalidates the old one.
   return jwt.sign(identityClaims(payload), env.jwtRefreshSecret, {
+    jwtid: crypto.randomUUID(),
     expiresIn: env.jwtRefreshExpiresIn as jwt.SignOptions["expiresIn"]
   });
 }
