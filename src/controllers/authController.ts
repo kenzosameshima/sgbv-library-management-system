@@ -1,8 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response, NextFunction } from "express";
-import { z } from "zod";
 import { HttpError } from "../utils/httpError";
-import { createEmailSchema, createStringSchema } from "../utils/validation";
 import { findUserByEmail } from "../repositories/userRepository";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt";
 import {
@@ -12,17 +10,9 @@ import {
   saveRefreshToken
 } from "../repositories/tokenRepository";
 import { env } from "../config/env";
+import { loginSchema, refreshSchema } from "../schemas/auth";
 import { clearCsrfCookie, issueCsrfCookie } from "../middlewares/csrf";
-import { ACCESS_COOKIE_MAX_AGE_MS, MS_PER_DAY, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "../utils/constants";
-
-const loginSchema = z.object({
-  email: createEmailSchema(),
-  password: createStringSchema(PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENGTH, "Password")
-}).strict();
-
-const refreshSchema = z.object({
-  refreshToken: createStringSchema(1, 1000, "Refresh token")
-}).strict();
+import { ACCESS_COOKIE_MAX_AGE_MS, MS_PER_DAY } from "../utils/constants";
 
 function authCookieOptions(maxAgeMs: number) {
   return {

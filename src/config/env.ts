@@ -1,4 +1,9 @@
 import dotenv from "dotenv";
+import {
+  DEFAULT_ACCESS_COOKIE_NAME,
+  DEFAULT_CSRF_COOKIE_NAME,
+  DEFAULT_REFRESH_COOKIE_NAME
+} from "../utils/constants";
 
 dotenv.config();
 
@@ -25,9 +30,9 @@ export const env = {
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean),
-  accessCookieName: process.env.AUTH_ACCESS_COOKIE_NAME ?? "sgb_at",
-  refreshCookieName: process.env.AUTH_REFRESH_COOKIE_NAME ?? "sgb_rt",
-  csrfCookieName: process.env.AUTH_CSRF_COOKIE_NAME ?? "sgb_csrf",
+  accessCookieName: process.env.AUTH_ACCESS_COOKIE_NAME ?? DEFAULT_ACCESS_COOKIE_NAME,
+  refreshCookieName: process.env.AUTH_REFRESH_COOKIE_NAME ?? DEFAULT_REFRESH_COOKIE_NAME,
+  csrfCookieName: process.env.AUTH_CSRF_COOKIE_NAME ?? DEFAULT_CSRF_COOKIE_NAME,
   authCookieDomain: process.env.AUTH_COOKIE_DOMAIN ?? undefined,
   jwtAccessSecret: requireEnv("JWT_ACCESS_SECRET"),
   jwtRefreshSecret: requireEnv("JWT_REFRESH_SECRET"),
