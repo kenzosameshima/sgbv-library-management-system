@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,8 +13,9 @@ vi.mock("../../src/config/db", () => ({
 
 import { createLoanForUser, returnLoanByIdForUser, returnLoanForUser } from "../../src/services/loanService";
 import { FINE_PER_DAY, MAX_ACTIVE_LOANS } from "../../src/utils/constants";
+import { loadSchema } from "../helpers/schema";
 
-const schema = readFileSync("config/schema.sql", "utf8").replace(/CREATE EXTENSION[^;]*;/, "");
+const schema = loadSchema();
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 let seq = 0;
