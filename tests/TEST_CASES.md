@@ -1,41 +1,41 @@
-# Casos de Teste - MVP SGB
+# Test Cases - SGB MVP
 
-## CT01 - Cadastro de usuario
-- Entrada: nome, email, senha
-- Passos: enviar POST `/api/v1/users`
-- Esperado: usuario cadastrado
+## CT01 - Register user
+- Input: name, email, password
+- Steps: send POST `/api/v1/users`
+- Expected: user is registered
 
-## CT03 - Login valido
-- Entrada: email, senha
-- Passos: enviar POST `/api/v1/auth/login`
-- Esperado: access token e refresh token retornados
+## CT03 - Valid login
+- Input: email, password
+- Steps: send POST `/api/v1/auth/login`
+- Expected: access token and refresh token are returned
 
-## CT05 - Cadastro de livro
-- Entrada: titulo, autor, categoria, isbn, totalCopies
-- Passos: enviar POST `/api/v1/books` com token ADMIN
-- Esperado: livro cadastrado
+## CT05 - Register book
+- Input: title, author, category, isbn, totalCopies
+- Steps: send POST `/api/v1/books` with an ADMIN token
+- Expected: book is registered
 
-## CT06 - Emprestimo valido
-- Entrada: userId (opcional para ADMIN), bookId
-- Passos: enviar POST `/api/v1/loans`
-- Esperado: emprestimo registrado e disponibilidade decrementada
+## CT06 - Valid loan
+- Input: userId (optional for ADMIN), bookId
+- Steps: send POST `/api/v1/loans`
+- Expected: loan is recorded and availability is decremented
 
-## CT07 - Emprestimo indisponivel
-- Entrada: bookId indisponivel
-- Passos: enviar POST `/api/v1/loans`
-- Esperado: bloqueio com mensagem sugerindo reserva
+## CT07 - Unavailable book loan
+- Input: unavailable bookId
+- Steps: send POST `/api/v1/loans`
+- Expected: request is rejected with a message suggesting a reservation
 
-## CT09 - Devolucao
-- Entrada: userId (opcional para ADMIN), bookId
-- Passos: enviar POST `/api/v1/returns`
-- Esperado: emprestimo finalizado e disponibilidade atualizada
+## CT09 - Return
+- Input: userId (optional for ADMIN), bookId
+- Steps: send POST `/api/v1/returns`
+- Expected: loan is closed and availability is updated
 
-## CT11 - Reserva de livro
-- Entrada: bookId indisponivel
-- Passos: enviar POST `/api/v1/reservations`
-- Esperado: usuario entra na fila FIFO
+## CT11 - Book reservation
+- Input: unavailable bookId
+- Steps: send POST `/api/v1/reservations`
+- Expected: user joins the FIFO queue
 
-## CT14 - Pagamento de multa
-- Entrada: fineId
-- Passos: enviar POST `/api/v1/users/fines/pay` com token ADMIN
-- Esperado: multa marcada como paga e usuario liberado
+## CT14 - Fine payment
+- Input: fineId
+- Steps: send POST `/api/v1/users/fines/pay` with an ADMIN token
+- Expected: fine is marked as paid and the user can borrow again
