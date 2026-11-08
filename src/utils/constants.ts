@@ -19,6 +19,9 @@ export const DEFAULT_ACCESS_COOKIE_NAME = "sgb_at";
 export const DEFAULT_REFRESH_COOKIE_NAME = "sgb_rt";
 export const DEFAULT_CSRF_COOKIE_NAME = "sgb_csrf";
 
+// Process lifecycle
+export const SHUTDOWN_TIMEOUT_MS = 10 * 1000;
+
 // HTTP hardening
 export const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 export const HSTS_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;

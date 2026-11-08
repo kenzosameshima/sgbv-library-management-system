@@ -14,6 +14,10 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   return rows;
 }
 
+export async function closePool(): Promise<void> {
+  await pool.end();
+}
+
 export async function withTransaction<T>(callback: (client: PoolClientLike) => Promise<T>): Promise<T> {
   const client = await pool.connect();
 
